@@ -100,6 +100,7 @@ def main(args):
 	offset = 4
 	metadataOffset = offset + 4
 	programOffset = getInt(content, offset, intSize)
+	# The data end offset is the total spi file size in newer firmware versions
 	dataEndOffset = getInt(content, programOffset, intSize)
 	
 	# Read metadata
@@ -109,6 +110,7 @@ def main(args):
 	
 	# TODO: understand the meaning of the 8 bytes that are being skipped
 	#!print("{:x}".format(programOffset))
+	#!print("{:x}".format(dataEndOffset))
 	offset = programOffset + 12
 	
 	data = getBytes(content, offset, dataEndOffset - offset)

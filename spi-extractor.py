@@ -33,6 +33,35 @@ def getInt(data, offset, size=intSize):
 	# Return a 32-bit int
 	return int.from_bytes(data[offset:offset+size], byteorder='little', signed=False)
 
+def getMetadataItem(content, offset):
+	#
+	startText = getInt(content, offset, intSize)
+	offset += intSize
+	startLabel = getInt(content, offset, intSize)
+	offset += intSize
+	labelSize = getInt(content, offset, intSize)
+	offset += intSize
+	label = getBytes(content, offset, labelSize)
+	offset += labelSize
+	startValue = getInt(content, offset, intSize)
+	offset += intSize
+	valueSize = getInt(content, offset, intSize)
+	offset += intSize
+	value = getBytes(content, offset, valueSize)
+	offset += valueSize
+	
+	data = label + b': ' + value + b'\r\n'
+	return (data, offset)
+
+def getMetadata(content, offset):
+	metadata = b''
+	while (getInt(content, offset, intSize) != 3):
+		#
+		data, offset = getMetadataItem(content, offset)
+		metadata += data
+	offset += intSize
+	return (metadata, offset)
+
 def main(args):
 	filename = args.filename
 	
@@ -45,9 +74,9 @@ def main(args):
 	# Offset  Size   Value
 	#    0      4    56 41 00 02
 	#    4      4    Offset to (12 bytes before) user programs
-	#                Metadata
-	#                    Each item begins with 01 00 00 00
-	#                    Label and values begin with 02 00 00 00
+	#    8           Metadata
+	#                    Each item begins with 02 00 00 00
+	#                    Label and values begin with 01 00 00 00
 	#                    Size of the data follows: XX XX 00 00
 	#                    Data
 	#                End of metadata: 03 00 00 00
@@ -69,12 +98,17 @@ def main(args):
 	
 	# Location of offset to user programs (12 bytes before)
 	offset = 4
-	
+	metadataOffset = offset + 4
 	programOffset = getInt(content, offset, intSize)
-	
 	dataEndOffset = getInt(content, programOffset, intSize)
 	
+	# Read metadata
+	metadata, acsplOffset = getMetadata(content, metadataOffset)
+	#!print(metadata)
+	#!print("{:x}".format(acsplOffset))
+	
 	# TODO: understand the meaning of the 8 bytes that are being skipped
+	#!print("{:x}".format(programOffset))
 	offset = programOffset + 12
 	
 	data = getBytes(content, offset, dataEndOffset - offset)
@@ -88,7 +122,7 @@ def main(args):
 	actualData = data[:i]
 	#!print(actualData)
 	
-	num = writeBinFile(filename, actualData)
+	num = writeBinFile(filename, metadata + actualData)
 	print(f"Bytes written: {num}")
 	
 	### 2nd attempt: searching through the file for unprintable ascii delimiters to see if they are meaningful
